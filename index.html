@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur de Rentabilité - Dofus Rétro</title>
+    <style>
+        :root {
+            /* Palette de couleurs style "Parchemin / Dofus" */
+            --bg-color: #2c2724;
+            --parchment-bg: #f4ebd0;
+            --parchment-border: #6d4c41;
+            --parchment-accent: #e0d4b4;
+            --text-color: #3e2723;
+            --profit-color: #2e7d32; /* Vert positif */
+            --loss-color: #c62828;   /* Rouge négatif */
+            --input-bg: #fffbf0;
+            --kamas-color: #d4a017;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle, #3e3632 0%, #1a1715 100%);
+            font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: var(--parchment-bg);
+            border: 6px solid var(--parchment-border);
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 80px rgba(109, 76, 65, 0.2);
+            /* Ajout d'une texture de bruit légère pour le côté papier */
+            background-image: url('data:image/svg+xml;utf8,<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.04"/></svg>'), linear-gradient(to bottom right, #f4ebd0, #e6d8b8);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--parchment-border);
+            border-bottom: 2px solid var(--parchment-border);
+            padding-bottom: 15px;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            color: var(--parchment-border);
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed var(--parchment-border);
+            padding-bottom: 5px;
+        }
+
+        .section {
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(109, 76, 65, 0.3);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #a1887f;
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: var(--parchment-border);
+            box-shadow: 0 0 5px rgba(109, 76, 65, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        th, td {
+            border: 1px solid var(--parchment-accent);
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--parchment-accent);
+            color: var(--parchment-border);
+            font-weight: bold;
+        }
+
+        td:first-child {
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .input-cell {
+            padding: 5px;
+        }
+
+        .input-cell input {
+            padding: 6px;
+            width: 120px;
+            text-align: right;
+        }
+
+        .results {
+            background-color: var(--parchment-accent);
+            border: 2px solid var(--parchment-border);
+            padding: 20px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .flex-between.total {
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-top: 2px solid var(--parchment-border);
+            padding-top: 12px;
+            margin-top: 12px;
+            margin-bottom: 0;
+        }
+
+        .profit {
+            color: var(--profit-color);
+            font-weight: bold;
+        }
+
+        .loss {
+            color: var(--loss-color);
+            font-weight: bold;
+        }
+
+        .kamas::after {
+            content: " K";
+            color: var(--kamas-color);
+            font-weight: bold;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: #5d4037;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 15px;
+            }
+            table, th, td {
+                font-size: 0.9rem;
+            }
+            .input-cell input {
+                width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📜 Calculateur de Parchemins</h1>
+
+        <!-- Configuration Globale -->
+        <div class="section grid-2">
+            <div>
+                <label for="select-parchment">Sélectionner le parchemin :</label>
+                <select id="select-parchment">
+                    <!-- Rempli dynamiquement -->
+                </select>
+            </div>
+            <div>
+                <label for="input-tax">Taxe HDV (%) :</label>
+                <input type="number" id="input-tax" value="2" min="0" max="100" step="0.1">
+                <div class="help-text">Taxe prélevée lors de la mise en vente.</div>
+            </div>
+        </div>
+
+        <!-- Recette et Coûts -->
+        <div class="section" id="recipe-section">
+            <h2>Ressources requises & Coûts d'artisanat</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ressource</th>
+                            <th>Quantité</th>
+                            <th>Prix achat (/100)</th>
+                            <th>Prix unitaire</th>
+                            <th>Coût total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recipe-body">
+                        <!-- Rempli dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Vente & Rentabilité de base -->
+        <div class="section grid-2">
+            <div>
+                <label for="input-resale">Prix de revente du parchemin :</label>
+                <input type="number" id="input-resale" min="0" step="1" placeholder="Ex: 50000">
+                <div class="help-text">Prix de vente unitaire en HDV.</div>
+            </div>
+            <div class="results">
+                <div class="flex-between">
+                    <span>Coût de craft :</span>
+                    <span id="res-craft-cost" class="kamas">0</span>
+                </div>
+                <div class="flex-between">
+                    <span>Prix de vente net (après taxe) :</span>
+                    <span id="res-net-sale" class="kamas">0</span>
+                </div>
+                <div class="flex-between total">
+                    <span>Bénéfice par parchemin :</span>
+                    <span id="res-profit" class="kamas">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outils de projection -->
+        <div class="section">
+            <h2>Outils de Projection</h2>
+            <div class="grid-2">
+                <div>
+                    <label for="input-budget">Budget disponible (Kamas) :</label>
+                    <input type="number" id="input-budget" min="0" step="1" placeholder="Ex: 1000000">
+                    <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 4px;">
+                        <div>Max craftable : <strong id="proj-max-craft">0</strong></div>
+                        <div>Bénéfice total estimé : <strong id="proj-budget-profit" class="kamas">0</strong></div>
+                        <div id="proj-budget-resources" style="margin-top: 10px; font-size: 0.9em; border-top: 1px dashed var(--parchment-border); padding-top: 5px;"></div>
+                    </div>
+                </div>
+                <div>
+                    <label for="input-goal">Objectif de production (Nb parchemins) :</label>
+                    <input type="number" id="input-goal" min="0" step="1" placeholder="Ex: 100">
+                    <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.5); border-radius: 4px;">
+                        <div>Coût total requis : <strong id="proj-goal-cost" class="kamas">0</strong></div>
+                        <div>Bénéfice total attendu : <strong id="proj-goal-profit" class="kamas">0</strong></div>
+                        <div id="proj-goal-resources" style="margin-top: 10px; font-size: 0.9em; border-top: 1px dashed var(--parchment-border); padding-top: 5px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DONNEES DES RECETTES ---
+        const parchmentsData = {
+            "grand_chance": {
+                name: "Grand Parchemin de Chance",
+                recipe: { "Ongles Chevaucheurs de Karne": 40, "Pattes d'Arakne": 75, "Trèfles à 5 feuilles": 60 }
+            },
+            "puissant_chance": {
+                name: "Puissant Parchemin de Chance",
+                recipe: { "Ongles Chevaucheurs de Karne": 40, "Pattes d'Arakne": 60, "Trèfles à 5 feuilles": 55, "Queues du Mulou": 15 }
+            },
+            "grand_force": {
+                name: "Grand Parchemin de Force",
+                recipe: { "Côtes de Rib": 40, "Pics de Prespic": 70, "Pinces de Crabe": 75 }
+            },
+            "puissant_force": {
+                name: "Puissant Parchemin de Force",
+                recipe: { "Côtes de Rib": 45, "Pics de Prespic": 75, "Pinces de Crabe": 75, "Silex": 30 }
+            },
+            "grand_intel": {
+                name: "Grand Parchemin d'Intelligence",
+                recipe: { "Ailes de Tofu Maléfique": 30, "Peaux de Larve Bleue": 45, "Peaux de Larve Orange": 45, "Peaux de Larve Verte": 45 }
+            },
+            "puissant_intel": {
+                name: "Puissant Parchemin d'Intelligence",
+                recipe: { "Ailes de Tofu Maléfique": 40, "Peaux de Larve Bleue": 60, "Peaux de Larve Orange": 50, "Peaux de Larve Verte": 50, "Sangs de Vampire": 30 }
+            },
+            "grand_vita": {
+                name: "Grand Parchemin de Vitalité",
+                recipe: { "Gelées Bleutée": 60, "Gelées Menthe": 20, "Gelées Fraise": 25 }
+            },
+            "puissant_vita": {
+                name: "Puissant Parchemin de Vitalité",
+                recipe: { "Gelées Bleutée": 60, "Gelées Menthe": 25, "Gelées Fraise": 30, "Gelée Bleutée Royale": 1, "Gelée Fraise Royale": 1 }
+            },
+            "grand_agi": {
+                name: "Grand Parchemin d'Agilité",
+                recipe: { "Glands": 75, "Langues de Pissenlit": 75, "Pétales de Rose": 70 }
+            },
+            "puissant_agi": {
+                name: "Puissant Parchemin d'Agilité",
+                recipe: { "Glands": 80, "Langues de Pissenlit": 80, "Pétales de Rose": 80, "Sporme de Champ Champ": 20 }
+            },
+            "grand_sagesse": {
+                name: "Grand Parchemin de Sagesse",
+                recipe: { "Champignons": 90, "Graines de Tournesol": 70, "Graines de Chanvre": 40 }
+            },
+            "puissant_sagesse": {
+                name: "Puissant Parchemin de Sagesse",
+                recipe: { "Ailes de Moskitos": 200, "Champignons": 90, "Graines de Tournesol": 75, "Graines de Chanvre": 60 }
+            }
+        };
+
+        // --- ELEMENTS DU DOM ---
+        const selectParchment = document.getElementById('select-parchment');
+        const inputTax = document.getElementById('input-tax');
+        const inputResale = document.getElementById('input-resale');
+        const recipeBody = document.getElementById('recipe-body');
+        const inputBudget = document.getElementById('input-budget');
+        const inputGoal = document.getElementById('input-goal');
+
+        // Elements de résultats
+        const resCraftCost = document.getElementById('res-craft-cost');
+        const resNetSale = document.getElementById('res-net-sale');
+        const resProfit = document.getElementById('res-profit');
+        const projMaxCraft = document.getElementById('proj-max-craft');
+        const projBudgetProfit = document.getElementById('proj-budget-profit');
+        const projBudgetResources = document.getElementById('proj-budget-resources');
+        const projGoalCost = document.getElementById('proj-goal-cost');
+        const projGoalProfit = document.getElementById('proj-goal-profit');
+        const projGoalResources = document.getElementById('proj-goal-resources');
+
+        // --- INITIALISATION ---
+        function init() {
+            // Peupler le select
+            for (const [key, data] of Object.entries(parchmentsData)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = data.name;
+                selectParchment.appendChild(option);
+            }
+
+            // Charger les valeurs globales depuis LocalStorage
+            if (localStorage.getItem('dofus_tax')) inputTax.value = localStorage.getItem('dofus_tax');
+            if (localStorage.getItem('dofus_budget')) inputBudget.value = localStorage.getItem('dofus_budget');
+            if (localStorage.getItem('dofus_goal')) inputGoal.value = localStorage.getItem('dofus_goal');
+            
+            const lastSelected = localStorage.getItem('dofus_last_parchment');
+            if (lastSelected && parchmentsData[lastSelected]) {
+                selectParchment.value = lastSelected;
+            }
+
+            // Event Listeners Globaux
+            selectParchment.addEventListener('change', () => {
+                localStorage.setItem('dofus_last_parchment', selectParchment.value);
+                renderRecipe();
+            });
+            inputTax.addEventListener('input', () => {
+                localStorage.setItem('dofus_tax', inputTax.value);
+                calculate();
+            });
+            inputResale.addEventListener('input', () => {
+                const parchId = selectParchment.value;
+                localStorage.setItem(`dofus_resale_${parchId}`, inputResale.value);
+                calculate();
+            });
+            inputBudget.addEventListener('input', () => {
+                localStorage.setItem('dofus_budget', inputBudget.value);
+                calculate();
+            });
+            inputGoal.addEventListener('input', () => {
+                localStorage.setItem('dofus_goal', inputGoal.value);
+                calculate();
+            });
+
+            // Afficher la première recette
+            renderRecipe();
+        }
+
+        // --- RENDU DE LA RECETTE ---
+        function renderRecipe() {
+            const parchId = selectParchment.value;
+            const data = parchmentsData[parchId];
+            
+            // Charger le prix de revente spécifique à ce parchemin
+            const savedResale = localStorage.getItem(`dofus_resale_${parchId}`);
+            inputResale.value = savedResale || '';
+
+            recipeBody.innerHTML = '';
+
+            for (const [resName, qty] of Object.entries(data.recipe)) {
+                const tr = document.createElement('tr');
+                
+                // Récupérer le prix sauvegardé pour la ressource
+                const savedPrice100 = localStorage.getItem(`dofus_resPrice_${resName}`) || '';
+
+                tr.innerHTML = `
+                    <td>${resName}</td>
+                    <td>${qty}</td>
+                    <td class="input-cell">
+                        <input type="number" min="0" step="1" class="res-price-input" data-name="${resName}" value="${savedPrice100}">
+                    </td>
+                    <td class="unit-price">0</td>
+                    <td class="total-cost">0</td>
+                `;
+                recipeBody.appendChild(tr);
+            }
+
+            // Ajouter les listeners sur les nouveaux inputs générés
+            const priceInputs = document.querySelectorAll('.res-price-input');
+            priceInputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const name = e.target.getAttribute('data-name');
+                    localStorage.setItem(`dofus_resPrice_${name}`, e.target.value);
+                    calculate();
+                });
+            });
+
+            calculate();
+        }
+
+        // --- CALCULS ---
+        function calculate() {
+            let totalCraftCost = 0;
+            const rows = recipeBody.querySelectorAll('tr');
+            
+            // 1. Calcul du coût de craft
+            rows.forEach(row => {
+                const qty = parseInt(row.children[1].textContent);
+                const inputPrice100 = row.querySelector('.res-price-input').value;
+                const price100 = parseFloat(inputPrice100) || 0;
+                
+                const unitPrice = price100 / 100;
+                const totalCost = unitPrice * qty;
+                
+                row.querySelector('.unit-price').textContent = formatKamas(unitPrice, true);
+                row.querySelector('.total-cost').textContent = formatKamas(totalCost);
+                
+                totalCraftCost += totalCost;
+            });
+
+            // 2. Calcul des ventes et bénéfices
+            const taxRate = parseFloat(inputTax.value) || 0;
+            const resalePrice = parseFloat(inputResale.value) || 0;
+            
+            const taxAmount = resalePrice * (taxRate / 100);
+            const netSalePrice = resalePrice - taxAmount;
+            const profit = netSalePrice - totalCraftCost;
+
+            // Affichage principal
+            resCraftCost.textContent = formatKamas(totalCraftCost);
+            resNetSale.textContent = formatKamas(netSalePrice);
+            resProfit.textContent = formatKamas(profit);
+            
+            applyColor(resProfit, profit);
+
+            // 3. Projections
+            const budget = parseFloat(inputBudget.value) || 0;
+            const goal = parseInt(inputGoal.value) || 0;
+            const parchId = selectParchment.value;
+            const data = parchmentsData[parchId];
+
+            // Projection Budget
+            let maxCraft = 0;
+            if (totalCraftCost > 0) {
+                maxCraft = Math.floor(budget / totalCraftCost);
+                projMaxCraft.textContent = maxCraft.toLocaleString('fr-FR');
+                const budgetProfit = maxCraft * profit;
+                projBudgetProfit.textContent = formatKamas(budgetProfit);
+                applyColor(projBudgetProfit, budgetProfit);
+            } else {
+                projMaxCraft.textContent = '0';
+                projBudgetProfit.textContent = '0';
+                applyColor(projBudgetProfit, 0);
+            }
+
+            if (maxCraft > 0) {
+                let resHtml = '<strong>Ressources nécessaires :</strong><ul style="margin: 5px 0 0 0; padding-left: 20px;">';
+                for (const [resName, qty] of Object.entries(data.recipe)) {
+                    resHtml += `<li>${(qty * maxCraft).toLocaleString('fr-FR')} x ${resName}</li>`;
+                }
+                resHtml += '</ul>';
+                projBudgetResources.innerHTML = resHtml;
+            } else {
+                projBudgetResources.innerHTML = '';
+            }
+
+            // Projection Objectif
+            const goalCost = goal * totalCraftCost;
+            const goalProfit = goal * profit;
+            
+            projGoalCost.textContent = formatKamas(goalCost);
+            projGoalProfit.textContent = formatKamas(goalProfit);
+            applyColor(projGoalProfit, goalProfit);
+
+            if (goal > 0) {
+                let resHtml = '<strong>Ressources nécessaires :</strong><ul style="margin: 5px 0 0 0; padding-left: 20px;">';
+                for (const [resName, qty] of Object.entries(data.recipe)) {
+                    resHtml += `<li>${(qty * goal).toLocaleString('fr-FR')} x ${resName}</li>`;
+                }
+                resHtml += '</ul>';
+                projGoalResources.innerHTML = resHtml;
+            } else {
+                projGoalResources.innerHTML = '';
+            }
+        }
+
+        // --- UTILITAIRES ---
+        function formatKamas(value, isUnit = false) {
+            // Si c'est un prix unitaire on garde 2 décimales si nécessaire, sinon on arrondit
+            if (isUnit) {
+                return value.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            }
+            return Math.round(value).toLocaleString('fr-FR');
+        }
+
+        function applyColor(element, value) {
+            element.classList.remove('profit', 'loss');
+            if (value > 0) {
+                element.classList.add('profit');
+            } else if (value < 0) {
+                element.classList.add('loss');
+            }
+        }
+
+        // Lancer l'application
+        init();
+
+    </script>
+</body>
+</html>
